@@ -2,20 +2,49 @@
 
 import React, { useState, useEffect } from 'react';
 
+interface Product {
+  id: string;
+  name: string;
+  price: string;
+  image: string;
+}
+
 export default function HomePage() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [visibleSections, setVisibleSections] = useState(new Set());
+  const [heroImage, setHeroImage] = useState<string>('');
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const instagramImages = Array(12).fill('/api/placeholder/400/400');
-  const productImages = Array(8).fill('/api/placeholder/400/500');
+
+  // Load data from API
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/products');
+        if (res.ok) {
+          const data = await res.json();
+          setHeroImage(data.heroImage || '');
+          setProducts(data.products || []);
+        }
+      } catch (error) {
+        console.error('데이터 로딩 실패:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
 
   // Auto-slide for product carousel
   useEffect(() => {
+    if (products.length === 0) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % productImages.length);
+      setCurrentSlide((prev) => (prev + 1) % products.length);
     }, 3000);
     return () => clearInterval(timer);
-  }, [productImages.length]);
+  }, [products.length]);
 
   // Intersection Observer for scroll animations
   useEffect(() => {
@@ -55,7 +84,9 @@ export default function HomePage() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('/api/placeholder/1920/1080')`,
+            backgroundImage: heroImage
+              ? `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('${heroImage}')`
+              : `linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('/api/placeholder/1920/1080')`,
           }}
         />
         <div className="relative z-10 max-w-3xl mx-auto px-6 text-center text-white">
@@ -81,41 +112,53 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-3xl md:text-4xl font-light text-center mb-16">Our Collection</h2>
 
-          {/* Carousel Container */}
-          <div className="relative overflow-hidden">
-            <div
-              className="flex transition-transform duration-700 ease-in-out"
-              style={{ transform: `translateX(-${currentSlide * 33.333}%)` }}
-            >
-              {productImages.map((img, idx) => (
+          {loading ? (
+            <div className="text-center py-20 text-gray-500">로딩 중...</div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-20 text-gray-500">등록된 제품이 없습니다.</div>
+          ) : (
+            <>
+              {/* Carousel Container */}
+              <div className="relative overflow-hidden">
                 <div
-                  key={idx}
-                  className="min-w-[33.333%] px-3"
+                  className="flex transition-transform duration-700 ease-in-out"
+                  style={{ transform: `translateX(-${currentSlide * 33.333}%)` }}
                 >
-                  <div className="group cursor-pointer overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition-all duration-300">
-                    <img
-                      src={img}
-                      alt={`Product ${idx + 1}`}
-                      className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  </div>
+                  {products.map((product, idx) => (
+                    <div
+                      key={product.id}
+                      className="min-w-[33.333%] px-3"
+                    >
+                      <div className="group cursor-pointer overflow-hidden rounded-lg shadow-lg hover:shadow-2xl transition-all duration-300">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-80 object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="p-4 bg-white">
+                          <h3 className="font-medium text-lg mb-1">{product.name}</h3>
+                          <p className="text-gray-600">{product.price}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Carousel Indicators */}
-            <div className="flex justify-center gap-2 mt-8">
-              {productImages.map((_, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => setCurrentSlide(idx)}
-                  className={`h-2 rounded-full transition-all duration-300 ${
-                    currentSlide === idx ? 'w-8 bg-black' : 'w-2 bg-gray-300'
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+                {/* Carousel Indicators */}
+                <div className="flex justify-center gap-2 mt-8">
+                  {products.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentSlide(idx)}
+                      className={`h-2 rounded-full transition-all duration-300 ${
+                        currentSlide === idx ? 'w-8 bg-black' : 'w-2 bg-gray-300'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </section>
 
